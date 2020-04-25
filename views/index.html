@@ -1,0 +1,98 @@
+<html lang="ko">
+<head>
+  <title> Web Chat </title>
+  <script src="https://code.jquery.com/jquery-3.4.1.min.js"
+          integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
+          crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"
+          integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
+          crossorigin="anonymous"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="text/javascript" src="/js/index.js"></script>
+
+  <style type="text/css">
+    .showUserName{
+      font-size:20px;
+      color: #ff8400;
+      text-align: center;
+    }
+    .chat-body{
+      box-shadow: 0 2px 5px 0 rgba(0,0,0,.16),0 2px 10px 0 rgba(0,0,0,.12)!important;
+      background-color: #ffdedf;
+      margin-bottom:20px;
+    }
+    #chatRow {
+      box-shadow: 0 2px 5px 0 blueviolet,0 2px 10px 0 rgba(0,0,0,.12)!important
+    }
+
+    .hide {
+      display: none;
+    }
+  </style>
+
+  <script type="text/x-template" id="msgTemplate">
+    <div class="chat-body white p-3">
+      <div class="header">
+        <strong class="primary">{{user}}</strong>
+      </div>
+      <hr class="w-100">
+      <p class="mb-0">{{message}}</p>
+    </div>
+  </script>
+</head>
+
+<body>
+<header style="padding-bottom: 100px !important">
+  <nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+    <a class="navbar-brand" href="#">웹챗</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse"
+            aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+  </nav>
+</header>
+<div class="container" style="width: 100%;">
+  <div class="row" id="loginRow" style="background-color:#dedede; padding: 20px;">
+    <div class="col-md-3"></div>
+    <div class="col-md-6">
+      <h1 class="h3 font-weight-normal">채팅 할 닉네임을 입력해주세요</h1>
+      <div class="form-group">
+        <input type="text" id="nickname" class="form-control"  aria-describedby="nickHelp" placeholder="Enter nickname">
+      </div>
+
+      <button class="btn btn-lg btn-primary btn-block" id="loginButton">입장</button>
+    </div>
+    <div class="col-md-3"></div>
+  </div>
+
+  <div class="row hide" style="background-color:#e9ecef;padding:20px;" id="infoRow" >
+    <h2>안녕하세요, <span id="loggedUserName"></span></h2>
+  </div>
+
+  <div class="row hide" id="chatRowContainer">
+    <div class="col-8" id="chatRow">
+      <h4 style="margin:20px auto !important">채팅</h4>
+      <div id="chatArea" style="min-height:200px;" class="col-md-12">
+
+      </div>
+      <div id="chatTextArea" class="col-md-12">
+        <div class="input-group mb-3 input-group-lg">
+          <input type="text" class="form-control" placeholder="전송할 메시지를 입력해주세요." aria-describedby="inputGroup-sizing-lg" id="message" disabled>
+          <div class="input-group-append">
+            <a class="input-group-text" href="#" id="sendMessage">SEND</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-4">
+      <h4 style="margin:20px auto !important">접속 인원</h4>
+
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
