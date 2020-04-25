@@ -1,0 +1,19 @@
+{
+  "name": "lbs-chat-webapp",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oodmumc3/lbs-chat-webapp.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/oodmumc3/lbs-chat-webapp/issues"
+  },
+  "homepage": "https://github.com/oodmumc3/lbs-chat-webapp#readme"
+}
