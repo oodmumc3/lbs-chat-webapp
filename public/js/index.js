@@ -19,6 +19,9 @@ function getDistanceFromLatLonInKm(lat1, lng1, lat2, lng2) {
     return d;
 }
 
+// -------------------------------
+// -------------------------------
+
 var SOCKET_ROUTES = {
     _socket: null,
     init: function (socket) {
@@ -27,9 +30,38 @@ var SOCKET_ROUTES = {
     },
     _onRoutes: function () {
         this._socket.on('userLists', $.proxy(this._onUserLists, this));
+        this._socket.on('confirmChat', $.proxy(this._onConfirmChat, this));
+        this._socket.on('failRequestChat', $.proxy(this._onFailRequestChat, this));
+        this._socket.on('requestChatResult', $.proxy(this._onRequestChatResult, this));
+        this._socket.on('successRoomJoin', $.proxy(this._onSuccessRoomJoin, this));
+    },
+    _onSuccessRoomJoin: function () {
+        console.log('success room join!!');
+    },
+    _onRequestChatResult: function (data) {
+        var isChatConfirm = data.isChatConfirm;
+
+        if (!isChatConfirm) {
+            alert('상대방이 채팅 수락을 거부하셨습니다.');
+            return;
+        }
+
+        SOCKET_ROUTES.emit('joinRoom', {roomSeq: data.roomSeq})
+    },
+    _onFailRequestChat: function (data) {
+        alert('채팅 실패: ' + data.message);
+    },
+    _onConfirmChat: function (data) {
+        var requestUserNickName = data.requestUserNickName;
+        var isChatConfirm = confirm(requestUserNickName + '님의 대화요청을 수락하시겠습니까?');
+
+        SOCKET_ROUTES.emit('requestChatResult', {
+            isChatConfirm: isChatConfirm,
+            confirmUserNickName: $('#nickname').val(),
+            requestUserNickName: requestUserNickName
+        });
     },
     _onUserLists: function (data) {
-        console.log('data.users :: ', data.users);
         var chatUsers = [];
 
         for (var i = 0; i < data.users.length; i++) {
@@ -44,7 +76,18 @@ var SOCKET_ROUTES = {
             });
         }
 
-        console.log('chatUsers :: ', chatUsers);
+        if (chatUsers.length > 1) {
+            chatUsers.sort(function (a, b) {
+                return a.distance - b.distance;
+            });
+        }
+
+        for (var i = 0; i < chatUsers.length; i++) {
+            chatUsers[i].distance = chatUsers[i].distance.toFixed(2) + 'km';
+        }
+
+        console.log('####################');
+       CHAT_APP.drawChatUserList(chatUsers);
     },
     emit: function (name, data) {
         this._socket.emit(name, data);
@@ -64,6 +107,18 @@ var CHAT_APP = {
     },
     _bindEvents: function () {
         $('#loginButton').click($.proxy(this._onClickLoginBtn, this));
+        $('#chatUserList').on('click', this._onClickChatUser);
+    },
+    _onClickChatUser: function (e) {
+        var $this = $(e.target);
+        var targetNickName = $this.data('nickname');
+
+        if (!confirm(targetNickName + '님과 채팅하시겠습니까?')) { return; }
+
+        SOCKET_ROUTES.emit('requestChat', {
+            targetNickName: targetNickName,
+            requestUserNickName: $('#nickname').val()
+        });
     },
     _onClickLoginBtn: function () {
         var nickName = $('#nickname').val();
@@ -137,6 +192,22 @@ var CHAT_APP = {
             otherGeoLocation.latitude,
             otherGeoLocation.longitude
         );
+    },
+    drawChatUserList: function (chatUsers) {
+        var $chatUserList = $('#chatUserList');
+        $chatUserList.find('a').remove();
+
+        if (!chatUsers || chatUsers.length === 0) {
+            return;
+        }
+
+        for (var i = 0; i < chatUsers.length; i++) {
+            var user = chatUsers[i];
+            var userInfo = user.nickName + ' ('+ user.distance +')';
+            var tag = '<a href="#" data-nickname="'+user.nickName+'" class="list-group-item list-group-item-action">'+ userInfo +'</a>';
+
+            $chatUserList.append(tag);
+        }
     }
 };
 
