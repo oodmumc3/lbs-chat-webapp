@@ -19,6 +19,13 @@ function getDistanceFromLatLonInKm(lat1, lng1, lat2, lng2) {
     return d;
 }
 
+function makeChatMessage (nickName, message) {
+    var msgTemplate = $('#msgTemplate').text();
+    msgTemplate = msgTemplate.replace('{{user}}', nickName);
+    msgTemplate = msgTemplate.replace('{{message}}', message);
+
+    return msgTemplate;
+}
 // -------------------------------
 // -------------------------------
 
@@ -34,9 +41,19 @@ var SOCKET_ROUTES = {
         this._socket.on('failRequestChat', $.proxy(this._onFailRequestChat, this));
         this._socket.on('requestChatResult', $.proxy(this._onRequestChatResult, this));
         this._socket.on('successRoomJoin', $.proxy(this._onSuccessRoomJoin, this));
+        this._socket.on('receiveMessage', $.proxy(this._onReceiveMessage, this));
+        this._socket.on('expireChatRoom', $.proxy(this._onExpireChatRoom, this));
     },
-    _onSuccessRoomJoin: function () {
-        console.log('success room join!!');
+    _onExpireChatRoom: function (data) {
+        CHAT_APP.exitChatRoom();
+    },
+    _onReceiveMessage: function (data) {
+        var chatMessage =
+            makeChatMessage(data.nickName, data.message);
+        $("#chatArea").append(chatMessage);
+    },
+    _onSuccessRoomJoin: function (data) {
+        CHAT_APP.openChatArea(data.roomSeq);
     },
     _onRequestChatResult: function (data) {
         var isChatConfirm = data.isChatConfirm;
@@ -86,7 +103,6 @@ var SOCKET_ROUTES = {
             chatUsers[i].distance = chatUsers[i].distance.toFixed(2) + 'km';
         }
 
-        console.log('####################');
        CHAT_APP.drawChatUserList(chatUsers);
     },
     emit: function (name, data) {
@@ -102,17 +118,60 @@ var CHAT_APP = {
         // 경도
         longitude: null
     },
+    /** * 입장한 채팅방 번호 */
+    _roomSeq: null,
     init: function (socket) {
         this._bindEvents();
     },
     _bindEvents: function () {
         $('#loginButton').click($.proxy(this._onClickLoginBtn, this));
-        $('#chatUserList').on('click', this._onClickChatUser);
+        $('#chatUserList').on('click', $.proxy(this._onClickChatUser, this));
+        $('#sendMessage').click(this._onClickSendMessageBtn);
+        $('#exitChatRoom').click($.proxy(this._onClickExitChatRoom, this));
+    },
+    _onClickExitChatRoom: function (e) {
+        e.preventDefault();
+
+        if (!this._roomSeq) { return; }
+        if (!confirm('채팅방을 나가시겠습니까?')) { return; }
+
+        this.exitChatRoom();
+    },
+    exitChatRoom: function () {
+        SOCKET_ROUTES.emit('exitChatRoom', { roomSeq: this._roomSeq, nickName: $('#nickname').val() });
+        this._clearChatWindow();
+        this._disableChat();
+        this.setRoomSeq(null);
+
+        var chatMessage =
+            makeChatMessage('SYSTEM', '채팅방이 종료되었습니다.');
+        $("#chatArea").append(chatMessage);
+    },
+    _onClickSendMessageBtn: function (e) {
+        e.preventDefault();
+
+        var nickName = $('#nickname').val();
+        var $message = $('#message');
+        var message = $message.val();
+
+        SOCKET_ROUTES.emit('sendMessage', {
+            message: message,
+            roomSeq: CHAT_APP.getRoomSeq(),
+            nickName: nickName
+        });
+
+        $("#chatArea").append(makeChatMessage(nickName, message));
+
+        $message.val('');
     },
     _onClickChatUser: function (e) {
         var $this = $(e.target);
         var targetNickName = $this.data('nickname');
 
+        if (this._isAlreadyJoinChatRoom()) {
+            alert('기존 채팅을 종료후에 시도해주세요.');
+            return;
+        }
         if (!confirm(targetNickName + '님과 채팅하시겠습니까?')) { return; }
 
         SOCKET_ROUTES.emit('requestChat', {
@@ -194,6 +253,7 @@ var CHAT_APP = {
         );
     },
     drawChatUserList: function (chatUsers) {
+        console.log('chatUsers :: ', chatUsers);
         var $chatUserList = $('#chatUserList');
         $chatUserList.find('a').remove();
 
@@ -208,6 +268,31 @@ var CHAT_APP = {
 
             $chatUserList.append(tag);
         }
+    },
+    openChatArea: function (roomSeq) {
+        this._clearChatWindow();
+
+        var chatMessage =
+            makeChatMessage('SYSTEM', '채팅방에 입장하셨습니다.');
+        $("#chatArea").append(chatMessage);
+
+        this.setRoomSeq(roomSeq);
+        this._enableChat();
+    },
+    setRoomSeq: function (roomSeq) {
+        this._roomSeq = roomSeq;
+    },
+    getRoomSeq: function () {
+        if (!this._roomSeq) {
+            throw Error('Room Seq Has Null Value');
+        }
+        return this._roomSeq;
+    },
+    _isAlreadyJoinChatRoom: function () {
+        return !!this._roomSeq;
+    },
+    _clearChatWindow: function () {
+        $("#chatArea > div.chat-body").remove();
     }
 };
 

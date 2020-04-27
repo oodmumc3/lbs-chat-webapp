@@ -38,6 +38,14 @@ exports.init = (clientSocket, io) => {
     clientSocket.on('joinRoom', (data) => {
         onJoinRoom(clientSocket, io, data.roomSeq);
     });
+
+    clientSocket.on('sendMessage', (data) => {
+        onSendMessage(clientSocket, data.message, data.roomSeq, data.nickName);
+    });
+
+    clientSocket.on('exitChatRoom', (data) => {
+        onExitChatRoom(clientSocket, data.roomSeq, data.nickName);
+    });
 };
 
 function onEnterNewUser(socket, io, nickName, geoLocation) {
@@ -47,6 +55,14 @@ function onEnterNewUser(socket, io, nickName, geoLocation) {
 
 function onDisconnect(socket, io) {
     const disconnectedUser = _USERS.find(user => user.id === socket.id);
+
+    if (disconnectedUser) {
+        const room = _ROOMS.find(room => room.users.includes(disconnectedUser.nickName));
+        if (room) {
+            io.to(room.roomSeq).emit('expireChatRoom');
+        }
+    }
+
     if (_USERS.indexOf(disconnectedUser) > -1) {
         _USERS.splice(_USERS.indexOf(disconnectedUser), 1);
     }
@@ -56,6 +72,8 @@ function onDisconnect(socket, io) {
 
 /**
  * 상대 사용자에게 대화 요청
+ * 요청 대상 사용자가 이미 채팅중이면 실패 메시지를 전송한다.
+ *
  * @param socket 클라이언트 소켓
  * @param requestUserNickName 대화 요청 사용자명
  * @param targetNickName 대화 상대 사용자명
@@ -64,6 +82,13 @@ function onRequestChat(socket, requestUserNickName, targetNickName) {
     const targetUser = _USERS.find(user => user.nickName === targetNickName.toString());
     if (!targetUser) {
         socket.emit('failRequestChat', { message: '상대 사용자가 존재하지 않습니다.' });
+        return;
+    }
+
+    const room = _ROOMS.find(room => room.users.includes(targetNickName.toString()));
+    console.log('########## room :: ', room);
+    if (room) {
+        socket.emit('failRequestChat', { message: '상대 사용자가 채팅중입니다.' });
         return;
     }
 
@@ -101,6 +126,7 @@ function onRequestChatResult(socket, confirmUserNickName, requestUserNickName, i
 /**
  * 특정 방 번호를 이용하여 room에 들어간다.
  * @param socket 클라이언트 소켓
+ * @param io 전체 소켓 오브젝트
  * @param roomSeq 방번호
  */
 function onJoinRoom(socket, io, roomSeq) {
@@ -110,5 +136,29 @@ function onJoinRoom(socket, io, roomSeq) {
     }
 
     socket.join(roomSeq);
-    io.to(roomSeq).emit('successRoomJoin');
+    io.to(roomSeq).emit('successRoomJoin', {roomSeq});
+}
+
+/**
+ * 메시지를 특정 방으로 전송한다.
+ * @param socket 클라이언트 소켓
+ * @param message 전송될 메시지
+ * @param roomSeq 전송될 방번호
+ * @param nickName 채팅 전송 사용자명
+ */
+function onSendMessage(socket, message, roomSeq, nickName) {
+    socket.broadcast
+        .to(roomSeq)
+        .emit('receiveMessage', { message, nickName });
+
+}
+
+function onExitChatRoom(socket, roomSeq, nickName) {
+    socket.leave(roomSeq);
+    const room = _ROOMS.find(room => room.users.includes(nickName));
+
+    if (room) {
+        _ROOMS.splice(_ROOMS.indexOf(room), 1);
+        socket.broadcast.to(roomSeq).emit('expireChatRoom');
+    }
 }
